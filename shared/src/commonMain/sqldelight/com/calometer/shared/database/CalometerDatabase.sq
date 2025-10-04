@@ -1,0 +1,192 @@
+CREATE TABLE foods (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  brand TEXT,
+  default_amount REAL NOT NULL,
+  default_unit TEXT NOT NULL,
+  kcal REAL NOT NULL,
+  protein REAL NOT NULL,
+  carbs REAL NOT NULL,
+  fat REAL NOT NULL
+);
+
+searchFoods:
+SELECT * FROM foods
+WHERE lower(name) LIKE ? OR (brand IS NOT NULL AND lower(brand) LIKE ?)
+LIMIT ?;
+
+insertFood:
+INSERT OR REPLACE INTO foods(id, name, brand, default_amount, default_unit, kcal, protein, carbs, fat)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+CREATE TABLE meals (
+  id TEXT NOT NULL PRIMARY KEY,
+  timestamp INTEGER NOT NULL,
+  note TEXT
+);
+
+selectAll:
+SELECT * FROM meals ORDER BY timestamp DESC;
+
+selectById:
+SELECT * FROM meals WHERE id = ?;
+
+insertMeal:
+INSERT OR REPLACE INTO meals(id, timestamp, note) VALUES(?, ?, ?);
+
+deleteMeal:
+DELETE FROM meals WHERE id = ?;
+
+CREATE TABLE meal_lines (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  meal_id TEXT NOT NULL REFERENCES meals(id) ON DELETE CASCADE,
+  food_id TEXT NOT NULL REFERENCES foods(id),
+  quantity REAL NOT NULL,
+  unit TEXT NOT NULL,
+  kcal REAL NOT NULL,
+  protein REAL NOT NULL,
+  carbs REAL NOT NULL,
+  fat REAL NOT NULL
+);
+
+selectByMeal:
+SELECT * FROM meal_lines WHERE meal_id = ? ORDER BY id;
+
+insertMealLine:
+INSERT INTO meal_lines(meal_id, food_id, quantity, unit, kcal, protein, carbs, fat)
+VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteByMeal:
+DELETE FROM meal_lines WHERE meal_id = ?;
+
+CREATE INDEX meal_lines_meal_id ON meal_lines(meal_id);
+CREATE INDEX meals_timestamp ON meals(timestamp);
+
+CREATE TABLE exercises (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  default_unit TEXT
+);
+
+insertExercise:
+INSERT OR REPLACE INTO exercises(id, name, type, default_unit) VALUES(?, ?, ?, ?);
+
+selectExercises:
+SELECT * FROM exercises ORDER BY name;
+
+CREATE TABLE routines (
+  id TEXT NOT NULL PRIMARY KEY,
+  name TEXT NOT NULL
+);
+
+insertRoutine:
+INSERT OR REPLACE INTO routines(id, name) VALUES(?, ?);
+
+selectRoutines:
+SELECT * FROM routines ORDER BY name;
+
+deleteRoutine:
+DELETE FROM routines WHERE id = ?;
+
+CREATE TABLE routine_blocks (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  routine_id TEXT NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+  title TEXT
+);
+
+insertRoutineBlock:
+INSERT INTO routine_blocks(routine_id, title) VALUES(?, ?);
+
+selectRoutineBlocks:
+SELECT * FROM routine_blocks WHERE routine_id = ? ORDER BY id;
+
+deleteRoutineBlocks:
+DELETE FROM routine_blocks WHERE routine_id = ?;
+
+lastInsertedId:
+SELECT last_insert_rowid();
+
+CREATE TABLE routine_items (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  block_id INTEGER NOT NULL REFERENCES routine_blocks(id) ON DELETE CASCADE,
+  exercise_id TEXT NOT NULL REFERENCES exercises(id),
+  sets INTEGER NOT NULL,
+  reps INTEGER,
+  duration_sec INTEGER,
+  rest_sec INTEGER NOT NULL
+);
+
+insertRoutineItem:
+INSERT INTO routine_items(block_id, exercise_id, sets, reps, duration_sec, rest_sec)
+VALUES(?, ?, ?, ?, ?, ?);
+
+selectRoutineItems:
+SELECT * FROM routine_items WHERE block_id = ? ORDER BY id;
+
+deleteRoutineItemsByRoutine:
+DELETE FROM routine_items WHERE block_id IN (SELECT id FROM routine_blocks WHERE routine_id = ?);
+
+CREATE TABLE workout_sessions (
+  id TEXT NOT NULL PRIMARY KEY,
+  routine_id TEXT,
+  date INTEGER NOT NULL
+);
+
+insertWorkoutSession:
+INSERT OR REPLACE INTO workout_sessions(id, routine_id, date) VALUES(?, ?, ?);
+
+selectWorkoutSessions:
+SELECT * FROM workout_sessions ORDER BY date DESC;
+
+CREATE TABLE workout_sets (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  session_id TEXT NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+  exercise_id TEXT NOT NULL,
+  set_index INTEGER NOT NULL,
+  reps INTEGER,
+  duration_sec INTEGER,
+  weight REAL,
+  rpe REAL
+);
+
+insertWorkoutSet:
+INSERT INTO workout_sets(session_id, exercise_id, set_index, reps, duration_sec, weight, rpe)
+VALUES(?, ?, ?, ?, ?, ?, ?);
+
+selectWorkoutSets:
+SELECT * FROM workout_sets WHERE session_id = ? ORDER BY set_index;
+
+deleteWorkoutSets:
+DELETE FROM workout_sets WHERE session_id = ?;
+
+CREATE INDEX workout_sets_session ON workout_sets(session_id);
+
+CREATE TABLE steps_daily (
+  date INTEGER NOT NULL PRIMARY KEY,
+  steps INTEGER NOT NULL,
+  source TEXT NOT NULL
+);
+
+upsertSteps:
+INSERT OR REPLACE INTO steps_daily(date, steps, source) VALUES(?, ?, ?);
+
+selectStepsRange:
+SELECT date, steps, source FROM steps_daily WHERE date BETWEEN ? AND ? ORDER BY date;
+
+selectStepsByDate:
+SELECT date, steps, source FROM steps_daily WHERE date = ?;
+
+CREATE TABLE user_profile (
+  id INTEGER NOT NULL PRIMARY KEY DEFAULT 0,
+  target_kcal INTEGER,
+  weight REAL,
+  activity_level TEXT
+);
+
+insertUserProfile:
+INSERT OR REPLACE INTO user_profile(id, target_kcal, weight, activity_level)
+VALUES(0, ?, ?, ?);
+
+selectUserProfile:
+SELECT target_kcal, weight, activity_level FROM user_profile WHERE id = 0;
