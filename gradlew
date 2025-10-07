@@ -137,10 +137,26 @@ CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 BASE64_JAR=$APP_HOME/gradle/wrapper/gradle-wrapper.jar.base64
 
 if [ ! -f "$CLASSPATH" ] && [ -f "$BASE64_JAR" ]; then
-    if command -v python3 >/dev/null 2>&1; then
-        GRADLE_WRAPPER_JAR="$CLASSPATH" \
-        GRADLE_WRAPPER_BASE64="$BASE64_JAR" \
-        python3 - <<'PY'
+    restored=false
+    jar_dir=`dirname "$CLASSPATH"`
+    mkdir -p "$jar_dir"
+
+    if command -v base64 >/dev/null 2>&1; then
+        if base64 --decode "$BASE64_JAR" > "$CLASSPATH" 2>/dev/null; then
+            restored=true
+        elif base64 -d "$BASE64_JAR" > "$CLASSPATH" 2>/dev/null; then
+            restored=true
+        else
+            rm -f "$CLASSPATH"
+        fi
+    fi
+
+    if [ "$restored" = "false" ]; then
+        for py_cmd in python3 python; do
+            if command -v "$py_cmd" >/dev/null 2>&1; then
+                GRADLE_WRAPPER_JAR="$CLASSPATH" \
+                GRADLE_WRAPPER_BASE64="$BASE64_JAR" \
+                "$py_cmd" - <<'PY'
 import base64
 import os
 from pathlib import Path
@@ -152,8 +168,16 @@ jar_path.parent.mkdir(parents=True, exist_ok=True)
 data = base64_path.read_bytes()
 jar_path.write_bytes(base64.b64decode(data))
 PY
-    else
-        echo "Gradle wrapper JAR is missing and python3 is not available to restore it." >&2
+                if [ -f "$CLASSPATH" ]; then
+                    restored=true
+                    break
+                fi
+            fi
+        done
+    fi
+
+    if [ "$restored" = "false" ]; then
+        echo "Gradle wrapper JAR is missing and could not be restored. Ensure a base64 decoder (base64, python3, or python) is available." >&2
         exit 1
     fi
 fi

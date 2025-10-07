@@ -17,7 +17,13 @@ set BASE64_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.base64
 
 if not exist "%CLASSPATH%" (
     if exist "%BASE64_JAR%" (
-        powershell -NoProfile -Command "Set-StrictMode -Version Latest; $jarPath = '%CLASSPATH%'; $base64Path = '%BASE64_JAR%'; $dir = Split-Path -Parent $jarPath; if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }; $bytes = [Convert]::FromBase64String([IO.File]::ReadAllText($base64Path)); [IO.File]::WriteAllBytes($jarPath, $bytes)" || goto fail
+        set POWERSHELL_EXE=
+        for %%P in (powershell.exe) do set "POWERSHELL_EXE=%%~$PATH:P"
+        if not defined POWERSHELL_EXE (
+            echo Gradle wrapper JAR is missing and PowerShell is not available to restore it.
+            goto fail
+        )
+        "%POWERSHELL_EXE%" -NoProfile -Command "Set-StrictMode -Version Latest; $jarPath = '%CLASSPATH%'; $base64Path = '%BASE64_JAR%'; $dir = Split-Path -Parent $jarPath; if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }; $bytes = [Convert]::FromBase64String([IO.File]::ReadAllText($base64Path)); [IO.File]::WriteAllBytes($jarPath, $bytes)" || goto fail
     ) else (
         echo Gradle wrapper JAR is missing. Please regenerate it with 'gradle wrapper'.
         goto fail

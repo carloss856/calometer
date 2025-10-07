@@ -5,13 +5,18 @@ plugins {
     alias(libs.plugins.sqldelight)
 }
 
+val hostOs = System.getProperty("os.name")?.lowercase() ?: ""
+val enableIosTargets = hostOs.contains("mac") || hostOs.contains("darwin")
+
 kotlin {
     androidTarget()
-    val iosTargets = listOf(iosX64(), iosArm64(), iosSimulatorArm64())
-    iosTargets.forEach { target ->
-        target.binaries.framework {
-            baseName = "Shared"
-            isStatic = false
+
+    if (enableIosTargets) {
+        listOf(iosX64(), iosArm64(), iosSimulatorArm64()).forEach { target ->
+            target.binaries.framework {
+                baseName = "Shared"
+                isStatic = false
+            }
         }
     }
 
@@ -41,16 +46,19 @@ kotlin {
                 implementation(libs.sqldelight.android)
             }
         }
-        val iosMain by creating {
-            dependsOn(commonMain)
-            dependencies {
-                implementation(libs.ktor.client.darwin)
-                implementation(libs.sqldelight.native)
+
+        if (enableIosTargets) {
+            val iosMain by creating {
+                dependsOn(commonMain)
+                dependencies {
+                    implementation(libs.ktor.client.darwin)
+                    implementation(libs.sqldelight.native)
+                }
             }
+            val iosX64Main by getting { dependsOn(iosMain) }
+            val iosArm64Main by getting { dependsOn(iosMain) }
+            val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
         }
-        val iosX64Main by getting { dependsOn(iosMain) }
-        val iosArm64Main by getting { dependsOn(iosMain) }
-        val iosSimulatorArm64Main by getting { dependsOn(iosMain) }
     }
 }
 
@@ -74,6 +82,14 @@ sqldelight {
 }
 
 // Helper task to sync framework for Xcode consumption
-tasks.register("syncFramework") {
-    dependsOn("linkDebugFrameworkIosSimulatorArm64")
+if (enableIosTargets) {
+    tasks.register("syncFramework") {
+        dependsOn("linkDebugFrameworkIosSimulatorArm64")
+    }
+} else {
+    tasks.register("syncFramework") {
+        doLast {
+            logger.lifecycle("iOS framework sync is skipped because iOS targets are disabled on this host.")
+        }
+    }
 }
