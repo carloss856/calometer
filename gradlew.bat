@@ -13,6 +13,21 @@ set APP_HOME=%DIRNAME%
 set DEFAULT_JVM_OPTS="-Xmx64m" "-Xms64m"
 
 set CLASSPATH=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+set BASE64_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.base64
+
+if not exist "%CLASSPATH%" (
+    if exist "%BASE64_JAR%" (
+        powershell -NoProfile -Command "Set-StrictMode -Version Latest; $jarPath = '%CLASSPATH%'; $base64Path = '%BASE64_JAR%'; $dir = Split-Path -Parent $jarPath; if (-not (Test-Path -LiteralPath $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }; $bytes = [Convert]::FromBase64String([IO.File]::ReadAllText($base64Path)); [IO.File]::WriteAllBytes($jarPath, $bytes)" || goto fail
+    ) else (
+        echo Gradle wrapper JAR is missing. Please regenerate it with 'gradle wrapper'.
+        goto fail
+    )
+)
+
+if not exist "%CLASSPATH%" (
+    echo Gradle wrapper JAR is missing and could not be restored.
+    goto fail
+)
 
 set JAVA_EXE=java.exe
 if defined JAVA_HOME goto findJavaFromJavaHome
