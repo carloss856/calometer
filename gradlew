@@ -48,6 +48,17 @@ die () {
 # Unset irrelevant variables.
 unset -f cd
 
+cygwin=false
+msys=false
+darwin=false
+nonstop=false
+case "`uname`" in
+  CYGWIN* ) cygwin=true ;;
+  MINGW* | MSYS* ) msys=true ;;
+  Darwin* ) darwin=true ;;
+  NONSTOP* ) nonstop=true ;;
+esac
+
 # Determine the Java command to use to start the JVM.
 if [ -n "$JAVA_HOME" ] ; then
     if [ -x "$JAVA_HOME/jre/sh/java" ] ; then
@@ -123,6 +134,34 @@ if $cygwin ; then
 fi
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
+BASE64_JAR=$APP_HOME/gradle/wrapper/gradle-wrapper.jar.base64
+
+if [ ! -f "$CLASSPATH" ] && [ -f "$BASE64_JAR" ]; then
+    if command -v python3 >/dev/null 2>&1; then
+        GRADLE_WRAPPER_JAR="$CLASSPATH" \
+        GRADLE_WRAPPER_BASE64="$BASE64_JAR" \
+        python3 - <<'PY'
+import base64
+import os
+from pathlib import Path
+
+jar_path = Path(os.environ["GRADLE_WRAPPER_JAR"])
+base64_path = Path(os.environ["GRADLE_WRAPPER_BASE64"])
+
+jar_path.parent.mkdir(parents=True, exist_ok=True)
+data = base64_path.read_bytes()
+jar_path.write_bytes(base64.b64decode(data))
+PY
+    else
+        echo "Gradle wrapper JAR is missing and python3 is not available to restore it." >&2
+        exit 1
+    fi
+fi
+
+if [ ! -f "$CLASSPATH" ]; then
+    echo "Gradle wrapper JAR is missing. Please regenerate it with 'gradle wrapper'." >&2
+    exit 1
+fi
 
 # Determine the Java command to use to start the JVM.
 if [ -z "$JAVA_HOME" ] ; then
